@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\User;
+use App\Entities\User;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Foundation\Auth\RegistersUsers;
 
@@ -40,30 +41,59 @@ class RegisterController extends Controller
     }
 
     /**
-     * Get a validator for an incoming registration request.
-     *
-     * @param  array  $data
-     * @return \Illuminate\Contracts\Validation\Validator
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     */
+
+    public function register(Request $request)
+    {
+        try {
+            $this->validator($request->all())->validate();
+            $email = $request->input('email');
+            $password = $request->input('password');
+            $isAuth = $request->input('remember') ? true : false;
+            $objUser = $this->create(['email'=>$email, 'password'=>$password]);
+        } catch (\Exception $e) {
+            dd('Something went wrong, try again!');
+        }
+
+        if (!($objUser instanceof User))
+        {
+            return back()->with('error', "Can't create user");
+        }
+        if($isAuth)
+        {
+            $this->guard()->login($objUser);
+        }
+        return redirect(route('account'))->with('success', 'You have successfully registered!');
+
+
+
+        return $this->registered($request, $user)
+            ?: redirect($this->redirectPath());
+    }
+
+    /**
+     * @param array $data
+     * @return mixed
      */
     protected function validator(array $data)
     {
         return Validator::make($data, [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            /*'name' => 'required|string|max:255',*/
+            'email' => 'required|string|email|max:128|unique:users',
             'password' => 'required|string|min:6|confirmed',
         ]);
     }
 
     /**
-     * Create a new user instance after a valid registration.
-     *
-     * @param  array  $data
-     * @return \App\User
+     * @param array $data
+     * @return $this|\Illuminate\Database\Eloquent\Model
      */
     protected function create(array $data)
     {
         return User::create([
-            'name' => $data['name'],
+           /* 'name' => $data['name'],*/
             'email' => $data['email'],
             'password' => bcrypt($data['password']),
         ]);
